@@ -1,0 +1,2 @@
+50 0,15,18,21 * * * . /home/ec2-user/awsapiauto.sh
+* * * * * >/dev/null 2>&1

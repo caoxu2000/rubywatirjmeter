@@ -1,0 +1,1 @@
+test email attach jmeter test results. this email is scheduled to send out 4 times a day at 7:09am, 10:09am, 1:09pm, 4:09pm

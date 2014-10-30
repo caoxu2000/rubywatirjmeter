@@ -1,0 +1,197 @@
+require "rubygems"
+require "watir-webdriver"
+#require 'active_support/secure_random' 
+require 'suites/suites.rb'  
+require 'roo'
+require 'modules/apis.rb'  
+require 'helpers/readExcel.rb'  
+
+def run_functional() # Assigns a browser, and env. to the test
+  browserReadExcel()
+end
+
+def run_apis() # Run/Assigns API tests
+  apiReadExcel()
+end
+
+def mcs_login() # Logins a user from - logins.xlsx
+  $browser.goto $envURL
+  $browser.text_field(:id, "Email").when_present.set($userName)
+  $browser.text_field(:id, "Password").when_present.set($password)
+  $browser.send_keys :enter
+  $browser.button(:value,"SUBMIT").when_present.click
+  Watir::Wait.until { $browser.text.include? "New Folder" }
+  if $browser.text.include? "Welcome to Media Cloud Services"
+    puts "login - Failed."
+  else
+    puts "login - Successful" 
+  end  
+end
+
+def mcs_2faLogin() # Verifies a user through 2FA login
+  $browser.text_field(:id, "passcode").when_present.set("1234")
+  $browser.button(:value,"SUBMIT PASSCODE").when_present.click
+  if $browser.text.include? "Terms & Conditions for Site Use"
+    puts "2FA login - Successful."
+  else
+    puts "2FA login - Failed"
+  end
+end
+
+def mcs_terms() # Checks the terms and condiitons page
+  $browser.button(:text,"I AGREE").when_present.click
+  if $browser.text.include? "MCS"
+    puts "Terms and conditions - Successful."
+  else
+    puts "Terms and conditions - Failed"
+  end
+end
+
+def mcs_forgotPassword() # Tests forget password feature
+  $browser.goto $envURL
+  $browser.link(:text, "Forgot Password?").when_present.click
+  $browser.text_field(:id, "Email").when_present.set($userName)
+  $browser.button(:value, "Send Email").when_present.click
+  if $browser.text.include? "An email with instructions has been generated to the email address specified."
+    puts "Password reset email sent - Successful"
+  else
+    puts "Reset Password - Failed"
+  end
+end
+
+def mcs_CreateNewFolder() # Create a new folder
+  sleep 3
+  $browser.link(:id, "assethome_createfolder").when_present.click
+  $browser.link(:id, "mcs_folder_createrename_cancel").when_present.click
+  puts "Create New Folder: Cancel - Successful"
+  sleep 3
+  $browser.link(:id, "assethome_createfolder").when_present.click
+  $browser.text_field(:id, "mcs_folder_rename_value").when_present.set("_QAAutomationTestFolder")
+  sleep 3
+  $browser.link(:id, "mcs_folder_createrename_save").when_present.click
+  if $browser.text.include? "_QAAutomationTestFolder"
+    puts "Create New Folder: Save - Successful"
+  else
+    puts "Create New Folder: Save - Failed"
+  end
+end
+
+def mcs_AssetDetailsAddVideoTag() # Adds a 'Video' tag to an asset
+  $browser.link(:title, "Black Keys.MOV" ).when_present.click # Need to remove hard-code
+  $browser.button(:class, "mcs-SelectSearchDropDown")
+  $browser.select_list(:name, "mcs-Video").when_present.select("mcs-Video")
+  $browser.link(:class, "mcs-gray-remove").when_present.click
+  if $browser.label.include? "MCS_Description"
+    puts "Clear All Tags - Failed"
+  else
+    puts "Clear All Tags - Successful"
+  end
+  $browser.text_field(:class, "mcs-SelectSearchInput").when_present.set("mcs-Video")
+  $browser.select_list(:name, "mcs-Video").when_present.select("mcs-Video")
+  if $browser.label.include? "MCS_Description"
+    puts "Label Added - Successful"
+  else
+    puts "Label Added - Failed"
+  end
+end
+
+def mcs_AssetDetailsPutAssetInFolder() # Assigns an asset to a folder from the Asset Details page
+  $browser.link(:value, "Black Keys.MOV").when_present.click
+  $browser.link(:class, "mcs-assetDetailFolders").when_present.click # Bug 3547, The 'Put in Folder' link from the Asset Details page is not working
+end
+
+def mcs_SearchAsset() # Revised and works
+  sleep 3
+  $browser.text_field(:class, "as-input").when_present.set("BOOM")
+  $browser.send_keys :enter
+  $browser.send_keys :enter
+  Watir::Wait.until { $browser.text.include? "Result(s)" }
+  if $browser.text.include? "Result(s)"
+    puts "Asset Search - Successful"
+  else
+    puts "Asset Search - Failed"
+  end
+end
+
+def mcs_SavedItems() # tests the Saved Items Page
+  sleep 3
+  $browser.text_field(:class, "as-input").when_present.set("BOOM")
+  $browser.send_keys :enter
+  $browser.send_keys :enter
+  Watir::Wait.until { $browser.text.include? "Result(s)" }
+  if $browser.text.include? "Result(s)"
+    puts "Asset Search - Successful"
+  else
+    puts "Asset Search - Failed"
+  end
+  sleep 3
+  $browser.link(:text, "Select All").when_present.click # Issue with SELECT ALL (Neew research on this)
+  $browser.link(:id, "multiSelectDropdown").when_present.click
+  $browser.link(:text, "Add to Saved Items").when_present.click
+  puts "Add to Saved Items - Successful"
+  sleep 3
+  $browser.link(:text, "Saved Items ").when_present.click
+  puts "Saved Items - Successful"
+end
+
+def mcs_MyAccountProfileUpdatePassword() # Bug: Password doesn't get updated
+  $browser.link(:text, "My Account").when_present.click
+  $browser.h5(:id, "passwordEdit").when_present.click
+  $browser.text_field(:id, "oldPassword").when_present.set($password)
+  $browser.text_field(:id, "newPassword").when_present.set($password)
+  $browser.text_field(:id, "confirmPassword").when_present.set($password)
+  $browser.text_field(:id, "newPassword").when_present.set($password) #//Bug: The Save button doesn't get enabled unless you click other text fields. 
+  $browser.button(:id, "savePassword").when_present.click
+  if $browser.div(:text, "Your password has been update successfully.").when_present.text
+    puts "Password Update - Successful"
+  else
+    puts "Password Update - Failed"
+  end 
+end  
+
+def mcs_MyAccountProfileUserInformation() # My accounts > Profile info
+  $browser.link(:text, "My Account").when_present.click
+  $browser.span(:id, "basicInformationCollpaseExpanse").when_present.click
+  $browser.h5(:id, "basicInfoEdit").when_present.click
+  $browser.text_field(:id, "firstName").when_present.set($firstName)
+  $browser.text_field(:id, "lastName").when_present.set($lastName)
+  $browser.text_field(:id, "firstName").when_present.append(" M")
+  $browser.select_list(:id, "countries").when_present.select("United States") #bug: sub domain emails not valid
+  $browser.text_field(:id, "email").when_present.set("mohamed_elzein@sony.com") 
+  $browser.text_field(:id, "confirmEmail").when_present.set("mohamed_elzein@sony.com") 
+  $browser.text_field(:id, "firstName").when_present.click # bug: need to click on another element to enable the Save Button
+  $browser.button(:id, "saveBasicInfo").when_present.click
+  if $browser.text.include? $firstName
+    puts "User Information Update - Successful"
+  else
+    puts "User Information Update - Failed"
+  end
+end
+  
+def mcs_MyAccountProfileRegisteredDevices() # Need to add and delete device verifications - BUG: can't add device
+  $browser.link(:text, "My Account").when_present.click
+  $browser.h5(:id, "registeredDevicesEdit").when_present.click
+  $browser.text_field(:value, "Work").when_present.append(" - QA")
+  $browser.text_field(:value, "Home Phone").when_present.append(" - QA")
+  $browser.text_field(:value, "Office").when_present.append(" - QA")
+  $browser.text_field(:value, "Center Phone 2").when_present.append(" - QA")
+  $browser.radio(:id, "radio-3").when_present.set
+  $browser.button(:id, "saveRegisterDevices").when_present.click
+  $browser.span(:id, "registeredDevicesCollpaseExpanse").when_present.click
+  if $browser.text.include? " - QA"
+    puts "Registered Devices Names Update - Successful"
+  else
+    puts "Registered Devices Names Update - Failed"
+  end
+end
+  
+def mcs_uploadAssets() # Tests the Upload Asset feature
+  $browser.div(:onclick => "uploadFile()").when_present.click
+  sleep 1
+  $browser.div(:text => "Files").when_present.click
+  sleep 2
+  puts "here 2"
+  #$browser.div(:xpath, "//div[@class='uploadFiles']").when_present.click
+  $browser.file_field(:index, 1).set("/Users/sonyit/Desktop/test.png")
+  puts "here 3"  
+end
